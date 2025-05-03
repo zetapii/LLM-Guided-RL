@@ -5,6 +5,8 @@ import torch.optim as optim
 import numpy as np
 import random
 from minigrid.wrappers import ImgObsWrapper
+from llama import suggest_llm_action
+
 
 # Hyperparameters
 lr = 3e-4
@@ -15,7 +17,9 @@ epsilon_decay = 0.995
 max_episodes = 10000
 max_steps = 500
 
-env = gym.make('MiniGrid-DoorKey-6x6-v0', render_mode='rgb_array', agent_view_size=3)
+name_of_environment = 'MiniGrid-DoorKey-6x6-v0'
+
+env = gym.make(name_of_environment, render_mode='rgb_array', agent_view_size=3)
 
 class QNetworkCNN(nn.Module):
     def __init__(self, obs_shape, action_dim):
@@ -64,15 +68,17 @@ class QLearningAgent:
         self.memory = []
         self.batch_size = 64
         self.memory_size = 10000
-
     def get_action(self, obs):
         # Epsilon decay
         self.steps += 1
         self.epsilon = max(epsilon_end, self.epsilon * epsilon_decay)
+        self.epsilon = 1
         
         # Epsilon-greedy action selection
         if random.random() < self.epsilon:
-            return random.randint(0, self.action_dim - 1)
+            # return random.randint(0, self.action_dim - 1)
+            action = suggest_llm_action(env, name_of_environment, env.action_space.n, obs) 
+            return action 
         else:
             with torch.no_grad():
                 obs_tensor = torch.tensor(obs[None], dtype=torch.float32) / 10.0
@@ -85,7 +91,6 @@ class QLearningAgent:
         if len(self.memory) >= self.memory_size:
             self.memory.pop(0)
         self.memory.append(transition)
-
     def update(self):
         # Skip if not enough samples
         if len(self.memory) < self.batch_size:
@@ -120,7 +125,6 @@ class QLearningAgent:
 
         # Soft update of target network
         self._soft_update()
-
     def _soft_update(self, tau=0.001):
         for target_param, param in zip(self.target_network.parameters(), 
                                        self.q_network.parameters()):
