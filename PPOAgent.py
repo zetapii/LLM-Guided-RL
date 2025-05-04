@@ -50,10 +50,7 @@ class ActorCriticCNN(nn.Module):
         return dist, value
 
 class PPOAgent:
-    def __init__(
-        self,
-        obs_shape,
-        action_dim,
+    def __init__(self,obs_shape, action_dim,
         clip_ratio=0.2,
         value_coef=0.5,
         entropy_coef=0.01,
@@ -80,23 +77,14 @@ class PPOAgent:
         self.rewards, self.dones = [], []
 
         self.action_dim = action_dim
-
     def get_action(self, obs):
-        """
-        Returns:
-            action (int),
-            log_prob (float),
-            value (float)
-        """
         # epsilon decay
         self.epsilon = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
 
         # choose between LLM-guided vs. policy
         if random.random() < self.epsilon:
             # LLM gives us a prob distribution
-            probs = suggest_llm_distribution(
-                env, name_of_environment, self.action_dim, obs
-            )
+            probs = suggest_llm_distribution(env, name_of_environment, self.action_dim, obs)
             dist = Categorical(probs=torch.tensor(probs, dtype=torch.float32))
         else:
             # use our learned policy
@@ -107,16 +95,8 @@ class PPOAgent:
         log_prob = dist.log_prob(action)
         # get value from critic
         with torch.no_grad():
-            if dist.logits is not None:
-                # policy branch
-                _, value = self.net.get_dist_and_value(
-                    torch.tensor(obs[None], dtype=torch.float32) / 10.0
-                )
-            else:
-                # LLM branch: we still need a value estimate from critic
-                _, value = self.net.get_dist_and_value(
-                    torch.tensor(obs[None], dtype=torch.float32) / 10.0
-                )
+            # Get policy value 
+            _, value = self.net.get_dist_and_value(torch.tensor(obs[None], dtype=torch.float32) / 10.0)
 
         return action.item(), log_prob.item(), value.item()
 
@@ -127,7 +107,6 @@ class PPOAgent:
         self.values.append(value)
         self.rewards.append(reward)
         self.dones.append(done)
-
     def compute_advantages(self):
         rewards = np.array(self.rewards)
         values = np.array(self.values + [0])  # bootstrap last value=0
@@ -142,7 +121,6 @@ class PPOAgent:
             advantages[t] = gae
         returns = advantages + values[:-1]
         return advantages, returns
-
     def update(self, epochs=4, batch_size=64):
         advs, rets = self.compute_advantages()
 
