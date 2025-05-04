@@ -73,10 +73,7 @@ def suggest_llm_distribution(env, env_name, action_dim, state):
 
     # Call the model and get the response
     response = client.chat(model=model, messages=[{'role': 'user', 'content': prompt}])
-    response_text = response['message']['content']
-    
-    print("response")
-    print(response_text) 
+    response_text = response['message']['content'] 
 
     # Extract the list of floats from the response using regex
     match = re.findall(r"\[([^\]]+)\]", response_text)
